@@ -1,0 +1,7 @@
+*.dump
+*.log
+.idea/
+.vscode/
+node_modules/
+.env
+temp
