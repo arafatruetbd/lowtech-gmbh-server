@@ -1,13 +1,12 @@
-'use strict';
+"use strict";
 
-const handlers = require('../handlers/root');
-
+const handlers = require("../handlers/root");
 
 module.exports = [
   {
-    path: '/',
-    method: 'GET',
+    path: "/",
+    method: "GET",
     handler: handlers.get,
     options: { auth: false },
-  }
+  },
 ];

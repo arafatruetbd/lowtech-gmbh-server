@@ -1,69 +1,46 @@
-'use strict';
-require('dotenv').config();
+"use strict";
 
-const Hapi = require('@hapi/hapi');
-const config = require('./config');
-const routes = require('./routes');
-const jwtAuthentication = require('@hapi/jwt');
-const validateJwt = require('./helpers/validateJWT');
-// const models = require('./models');
-const ENV = process.env.NODE_ENV || 'development';
-const JWT_SECRET = process.env.JWT_SECRET;
+const Hapi = require("@hapi/hapi");
+const { sequelize, syncAndSeed } = require("./models");
+const config = require("./config");
+const routes = require("./routes");
+const logger = require("./plugins/logger");
+const auth = require("./plugins/auth");
 
 const init = async () => {
   const server = Hapi.server({
-    port: process.env.PORT || 3000,
-    host: process.env.HOST || 'localhost',
-    routes: {
-      cors: {
-        origin: ['*'], // Adjust based on your security requirements
-        additionalHeaders: ['authorization'],
-      },
-      validate: {
-        failAction: async (request, h, err) => {
-          if (ENV === 'production') {
-            console.error('ValidationError:', err.message);
-            throw Boom.badRequest('Invalid request payload input');
-          } else {
-            console.error(err);
-            throw err;
-          }
-        },
-      },
-    },
-    ...config.server,
+    port: config.app.port,
+    host: "0.0.0.0",
   });
 
-  // Register JWT authentication plugin
-  await server.register(jwtAuthentication);
+  // Register plugins
+  await server.register(logger);
+  await server.register(auth);
 
-  server.auth.strategy('jwt', 'jwt', {
-    keys: JWT_SECRET,
-    verify: {
-      aud: false, // Add audience validation if needed
-      iss: false, // Add issuer validation if needed
-      sub: false, // Add subject validation if needed
-    },
-    validate: validateJwt,
-  });
-
-  server.auth.default('jwt');
-
-
-  // Sync database models (optional)
-  // await models.sync({ alter: true });
-
-  // Register routes
+  // Add routes
   server.route(routes);
 
+  // Test database connection and seed data
+  try {
+    await sequelize.authenticate();
+    console.log("Database connection has been established successfully.");
+
+    // Sync and seed the database
+    await syncAndSeed();
+
+    console.log("Database synced and seeded successfully.");
+  } catch (error) {
+    console.error("Error during database initialization:", error);
+    process.exit(1); // Exit if the database setup fails
+  }
 
   // Start the server
   await server.start();
-  console.log('🚀 Server running on %s', server.info.uri);
+  console.log(`Server running on ${server.info.uri}`);
 };
 
-process.on('unhandledRejection', (err) => {
-  console.error('Unhandled Rejection:', err);
+process.on("unhandledRejection", (err) => {
+  console.error(err);
   process.exit(1);
 });
 

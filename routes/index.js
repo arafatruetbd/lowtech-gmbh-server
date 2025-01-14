@@ -1,7 +1,6 @@
-'use strict';
+"use strict";
+const root = require("./root");
+const userRoutes = require("./userRoutes");
+const adminRoutes = require("./adminRoutes");
 
-const rootRoutes = require('./root');
-
-module.exports = [].concat(
-  rootRoutes
-);
+module.exports = [].concat(root, userRoutes, adminRoutes);

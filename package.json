@@ -10,9 +10,16 @@
     "start": "cross-env NODE_ENV=production node server.js"
   },
   "dependencies": {
+    "@hapi/good": "^9.0.1",
+    "@hapi/good-console": "^9.0.1",
+    "@hapi/good-squeeze": "^6.0.0",
     "@hapi/hapi": "^21.3.12",
     "@hapi/jwt": "^3.2.0",
-    "dotenv": "^16.4.7"
+    "bcrypt": "^5.1.1",
+    "dotenv": "^16.4.7",
+    "pg": "^8.13.1",
+    "pg-hstore": "^2.3.4",
+    "sequelize": "^6.37.5"
   },
   "devDependencies": {
     "cross-env": "^7.0.3",

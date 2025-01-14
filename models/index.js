@@ -1,24 +1,58 @@
-const Role = require('./role');
-const User = require('./user');
-const Otp = require('./otp');
+"use strict";
 
+const { Sequelize } = require("sequelize");
+const config = require("../config");
 
-/**
- * Method to sync models sequentially.
- */
-exports.sync = async function () {
+const sequelize = new Sequelize(
+  config.db.database,
+  config.db.username,
+  config.db.password,
+  {
+    host: config.db.host,
+    dialect: config.db.dialect,
+    logging: config.app.env !== "production" ? console.log : false,
+  }
+);
 
-  /**
-   * Comment out the model sync method when need to update the model
-   */
+// Initialize models
+const Role = require("./role")(sequelize, Sequelize);
+const Permission = require("./permission")(sequelize, Sequelize);
+const User = require("./user")(sequelize, Sequelize);
+const Vendor = require("./vendor")(sequelize, Sequelize);
+const UserAddress = require("./user_address")(sequelize, Sequelize);
+const RolePermissions = require("./rolePermissions")(sequelize, Sequelize);
 
-  // await Role.sync({ alter: true });
-  // await User.sync({ alter: true });
+// Define associations
+function defineAssociations() {
+  // User and Role
+  User.belongsTo(Role, { foreignKey: "roleId", as: "role" });
 
-  /**
-   * Seed data
-   */
+  // User and Vendor
+  User.belongsTo(Vendor, { foreignKey: "vendorId", as: "vendor" });
+  Vendor.hasMany(User, { foreignKey: "vendorId", as: "users" });
 
+  // User and UserAddress
+  User.hasMany(UserAddress, { foreignKey: "userId", as: "addresses" });
+
+  // Role and Permission
+  Role.belongsToMany(Permission, {
+    through: RolePermissions,
+    foreignKey: "roleId",
+    otherKey: "permissionId",
+  });
+  Permission.belongsToMany(Role, {
+    through: RolePermissions,
+    foreignKey: "permissionId",
+    otherKey: "roleId",
+  });
+}
+
+// Apply associations after model initialization
+defineAssociations();
+
+// Seed database
+async function seedDatabase() {
+  // Default permissions for roles
   const defaultPermissions = {
     buy_product: false,
     manage_product: false,
@@ -30,17 +64,27 @@ exports.sync = async function () {
     manage_user: false,
     manage_sub_admin: false,
     read_admin_panel: false,
-    manage_accounting: false  // stock, payment method,payment status
-  }
-  const seedData = [
+    manage_accounting: false,
+  };
+
+  // Create default permissions
+  const permissionNames = Object.keys(defaultPermissions);
+  const permissions = await Promise.all(
+    permissionNames.map(async (name) => {
+      const existingPermission = await Permission.findOne({ where: { name } });
+      if (!existingPermission) {
+        return Permission.create({ name });
+      }
+      return existingPermission;
+    })
+  );
+
+  // Create Roles
+  const seedRoles = [
     {
       name: "user",
-      permissions: {
-        ...defaultPermissions,
-        buy_product: true
-      }
+      permissions: { ...defaultPermissions, buy_product: true }, // user can buy products
     },
-
     {
       name: "admin",
       permissions: {
@@ -54,10 +98,9 @@ exports.sync = async function () {
         manage_sub_category: true,
         manage_order: true,
         read_admin_panel: true,
-        manage_accounting: true
-      }
+        manage_accounting: true,
+      },
     },
-
     {
       name: "sub-admin",
       permissions: {
@@ -68,48 +111,75 @@ exports.sync = async function () {
         manage_sub_category: true,
         manage_order: true,
         read_admin_panel: true,
-      }
-    }
+      },
+    },
   ];
 
-  // await Role.count().then(async (count) => {
-  //   console.log(count);
-  //   if (count === 0) {
-  //     await Role.bulkCreate(seedData);
-  //   }
-  // });
+  // Seed roles and associate permissions
+  for (let roleData of seedRoles) {
+    const role = await Role.create({ name: roleData.name });
 
-  // await Role.update({ ...seedData[0] }, { where: { id: 'ff236c63-7a94-4d2d-8990-9dda26ca6cae' } }); //user
-  // await Role.update({ ...seedData[1] }, { where: { id: '7cce16c5-e435-4e7f-a7db-11e6840e3126' } }); //admin
-  // await Role.update({ ...seedData[2] }, { where: { id: '5a50cf89-2af2-4c6b-8587-c625e50e540c' } }); //sub-admin
-  // await User.update({ permissions: seedData[1].permissions }, { where: { id: 'fa478746-27a6-4e8e-b294-f190bf8a9fd3' } }) //admin id: user ID
+    // Find and associate the permissions for each role
+    const rolePermissions = permissions.filter(
+      (permission) => roleData.permissions[permission.name]
+    );
 
-  // await Vendor.count().then(async (count) => {
-  //   console.log(count);
-  //   if (count === 0) {
-  //     Vendor.create({
-  //       name: "Main",
-  //       slug: "main",
-  //       email: "main@mail.com",
-  //       phone: "01234567890",
-  //     })
-  //   }
-  // });
+    // Associate role with permissions
+    await role.setPermissions(rolePermissions);
+  }
 
-  // await User.count().then(async (count) => {
-  //   console.log(count);
-  //   if (count === 0) {
-  //     await User.create({
-  //       firstName: "Admin",
-  //       lastName: "Admin",
-  //       email: "admin@mail.com",
-  //       phone: "01234567890",
-  //       "password": "mb@2K3^P-mY",
-  //       "verifyPassword": "mb@2K3^P-mY",
-  //       "roleId": "-admin--",
-  //       "vendorId": "-main--",
-  //     })
-  //   }
-  // });
+  // Seed Vendor
+  if ((await Vendor.count()) === 0) {
+    await Vendor.create({
+      name: "Main",
+      slug: "main",
+      email: "main@mail.com",
+      phone: "01234567890",
+    });
+    console.log("Vendor seeded successfully");
+  }
 
+  // Seed Admin User (if none exists)
+  if ((await User.count()) === 0) {
+    await User.create({
+      name: "Admin",
+      email: "admin@mail.com",
+      phone: "01234567890",
+      password: "xxxxxxxxxxxxxxx", // Ensure this is securely hashed in real-world apps
+      roleId: 2, // Assuming 'admin' is the second role
+      vendorId: 1, // Assuming 'Main' vendor is the first vendor
+    });
+    console.log("Admin user seeded successfully");
+  }
+}
+
+async function syncAndSeed() {
+  try {
+    // Sync models in the correct order to avoid dependency issues
+    // await Role.sync({ alter: true });
+    // await Permission.sync({ alter: true });
+    // await RolePermissions.sync({ alter: true });
+    // await Vendor.sync({ alter: true });
+    // await User.sync({ alter: true });
+    // await UserAddress.sync({ alter: true });
+
+    // // Seed database
+    // await seedDatabase();
+
+    console.log("Models synced and data seeded successfully");
+  } catch (error) {
+    console.error("Error syncing or seeding database:", error);
+  }
+}
+
+module.exports = {
+  sequelize,
+  Sequelize,
+  Role,
+  Permission,
+  User,
+  Vendor,
+  UserAddress,
+  RolePermissions,
+  syncAndSeed,
 };
