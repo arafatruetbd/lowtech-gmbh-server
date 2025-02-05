@@ -6,8 +6,8 @@ module.exports = {
   adminLogin: async (request, h) => {
     try {
       const { email, password } = request.payload;
-      const token = await adminService.adminLogin(email, password);
-      return h.response({ message: "Admin login successful", token }).code(200);
+      const data = await adminService.adminLogin(email, password);
+      return h.response({ message: "Admin login successful", data }).code(200);
     } catch (error) {
       return h.response({ error: error.message }).code(401);
     }

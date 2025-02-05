@@ -10,13 +10,19 @@
     "start": "cross-env NODE_ENV=production node server.js"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.741.0",
+    "@aws-sdk/lib-storage": "^3.741.0",
     "@hapi/good": "^9.0.1",
     "@hapi/good-console": "^9.0.1",
     "@hapi/good-squeeze": "^6.0.0",
     "@hapi/hapi": "^21.3.12",
+    "@hapi/joi": "^17.1.1",
     "@hapi/jwt": "^3.2.0",
+    "aws-sdk": "^2.1692.0",
     "bcrypt": "^5.1.1",
     "dotenv": "^16.4.7",
+    "multer": "^1.4.5-lts.1",
+    "multer-s3": "^3.0.1",
     "pg": "^8.13.1",
     "pg-hstore": "^2.3.4",
     "sequelize": "^6.37.5"

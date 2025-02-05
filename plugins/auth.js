@@ -17,27 +17,43 @@ module.exports = {
         sub: false,
         maxAgeSec: config.jwt.expiresIn,
       },
-      validate: async (artifacts) => {
-        const user = await User.findByPk(artifacts.decoded.payload.id, {
-          include: {
-            model: Role,
-            include: [Permission], // Include permissions associated with the role
-          },
-        });
+      validate: async (artifacts, request, h) => {
+        try {
+          // Fetch user along with role and permissions
+          const user = await User.findByPk(artifacts.decoded.payload.id, {
+            include: [
+              {
+                model: Role,
+                as: "role", // ✅ Make sure you use the correct alias
+                include: [
+                  {
+                    model: Permission,
+                    as: "permissions", // ✅ Ensure alias is used
+                    attributes: ["name"],
+                    through: { attributes: [] }, // Exclude join table attributes
+                  },
+                ],
+              },
+            ],
+          });
 
-        if (!user) {
+          if (!user) {
+            return { isValid: false };
+          }
+
+          // Extract permission names as scope
+          const scopes = user.role
+            ? user.role.permissions.map((perm) => perm.name)
+            : [];
+
+          return {
+            isValid: true,
+            credentials: { id: user.id, role: user.role.name, scope: scopes }, // ✅ Store scopes properly
+          };
+        } catch (err) {
+          console.error("JWT Validation Error:", err);
           return { isValid: false };
         }
-
-        // Get the permissions (scopes) associated with the role
-        const scopes = user.Role
-          ? user.Role.Permissions.map((permission) => permission.name)
-          : [];
-
-        return {
-          isValid: true,
-          credentials: { id: user.id, role: user.roleId, scopes },
-        };
       },
     });
 

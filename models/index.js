@@ -21,157 +21,193 @@ const User = require("./user")(sequelize, Sequelize);
 const Vendor = require("./vendor")(sequelize, Sequelize);
 const UserAddress = require("./user_address")(sequelize, Sequelize);
 const RolePermissions = require("./rolePermissions")(sequelize, Sequelize);
+const Category = require("./category")(sequelize, Sequelize);
+const Product = require("./product")(sequelize, Sequelize);
+const Inventory = require("./inventory")(sequelize, Sequelize);
 
-// Define associations
+// Define Associations
 function defineAssociations() {
-  // User and Role
+  // User and Role (One-to-One)
   User.belongsTo(Role, { foreignKey: "roleId", as: "role" });
+  Role.hasMany(User, { foreignKey: "roleId", as: "users" });
 
-  // User and Vendor
+  // User and Vendor (One-to-Many)
   User.belongsTo(Vendor, { foreignKey: "vendorId", as: "vendor" });
   Vendor.hasMany(User, { foreignKey: "vendorId", as: "users" });
 
-  // User and UserAddress
+  // User and UserAddress (One-to-Many)
   User.hasMany(UserAddress, { foreignKey: "userId", as: "addresses" });
 
-  // Role and Permission
+  // Role and Permission (Many-to-Many)
   Role.belongsToMany(Permission, {
     through: RolePermissions,
     foreignKey: "roleId",
     otherKey: "permissionId",
+    as: "permissions", // ✅ Ensure alias matches your query
   });
+
   Permission.belongsToMany(Role, {
     through: RolePermissions,
     foreignKey: "permissionId",
     otherKey: "roleId",
+    as: "roles",
   });
+  // Product and Category (One-to-Many)
+  Category.hasMany(Product, { foreignKey: "categoryId", as: "products" });
+  Product.belongsTo(Category, { foreignKey: "categoryId", as: "category" });
+
+  // Inventory and Product (One-to-One)
+  Product.hasOne(Inventory, { foreignKey: "productId", as: "inventory" });
+  Inventory.belongsTo(Product, { foreignKey: "productId", as: "product" });
+
+  console.log("✅ Associations defined successfully!");
 }
 
 // Apply associations after model initialization
 defineAssociations();
 
-// Seed database
+// Seed database function
 async function seedDatabase() {
-  // Default permissions for roles
-  const defaultPermissions = {
-    buy_product: false,
-    manage_product: false,
-    manage_vendor: false,
-    manage_brand: false,
-    manage_category: false,
-    manage_sub_category: false,
-    manage_order: false,
-    manage_user: false,
-    manage_sub_admin: false,
-    read_admin_panel: false,
-    manage_accounting: false,
-  };
+  console.log("🌱 Seeding database...");
 
-  // Create default permissions
-  const permissionNames = Object.keys(defaultPermissions);
-  const permissions = await Promise.all(
-    permissionNames.map(async (name) => {
-      const existingPermission = await Permission.findOne({ where: { name } });
-      if (!existingPermission) {
-        return Permission.create({ name });
-      }
-      return existingPermission;
-    })
-  );
+  try {
+    // Default permissions for roles
+    const defaultPermissions = {
+      buy_product: false,
+      manage_product: false,
+      manage_vendor: false,
+      manage_brand: false,
+      manage_category: false,
+      manage_sub_category: false,
+      manage_order: false,
+      manage_user: false,
+      manage_sub_admin: false,
+      read_admin_panel: false,
+      manage_inventory: false,
+    };
 
-  // Create Roles
-  const seedRoles = [
-    {
-      name: "user",
-      permissions: { ...defaultPermissions, buy_product: true }, // user can buy products
-    },
-    {
-      name: "admin",
-      permissions: {
-        ...defaultPermissions,
-        manage_product: true,
-        manage_sub_admin: true,
-        manage_user: true,
-        manage_vendor: true,
-        manage_brand: true,
-        manage_category: true,
-        manage_sub_category: true,
-        manage_order: true,
-        read_admin_panel: true,
-        manage_accounting: true,
-      },
-    },
-    {
-      name: "sub-admin",
-      permissions: {
-        ...defaultPermissions,
-        manage_product: true,
-        manage_brand: true,
-        manage_category: true,
-        manage_sub_category: true,
-        manage_order: true,
-        read_admin_panel: true,
-      },
-    },
-  ];
-
-  // Seed roles and associate permissions
-  for (let roleData of seedRoles) {
-    const role = await Role.create({ name: roleData.name });
-
-    // Find and associate the permissions for each role
-    const rolePermissions = permissions.filter(
-      (permission) => roleData.permissions[permission.name]
+    // Create default permissions
+    const permissionNames = Object.keys(defaultPermissions);
+    const permissions = await Promise.all(
+      permissionNames.map(async (name) => {
+        const [permission] = await Permission.findOrCreate({
+          where: { name },
+          defaults: { name },
+        });
+        return permission;
+      })
     );
 
-    // Associate role with permissions
-    await role.setPermissions(rolePermissions);
-  }
+    // Create Roles
+    const seedRoles = [
+      {
+        name: "user",
+        permissions: { ...defaultPermissions, buy_product: true },
+      },
+      {
+        name: "admin",
+        permissions: {
+          ...defaultPermissions,
+          manage_product: true,
+          manage_sub_admin: true,
+          manage_user: true,
+          manage_vendor: true,
+          manage_brand: true,
+          manage_category: true,
+          manage_sub_category: true,
+          manage_order: true,
+          read_admin_panel: true,
+          manage_inventory: true,
+        },
+      },
+      {
+        name: "sub-admin",
+        permissions: {
+          ...defaultPermissions,
+          manage_product: true,
+          manage_brand: true,
+          manage_category: true,
+          manage_sub_category: true,
+          manage_order: true,
+          read_admin_panel: true,
+        },
+      },
+    ];
 
-  // Seed Vendor
-  if ((await Vendor.count()) === 0) {
-    await Vendor.create({
-      name: "Main",
-      slug: "main",
-      email: "main@mail.com",
-      phone: "01234567890",
-    });
-    console.log("Vendor seeded successfully");
-  }
+    // Seed roles and associate permissions
+    const roles = await Promise.all(
+      seedRoles.map(async (roleData) => {
+        const [role] = await Role.findOrCreate({
+          where: { name: roleData.name },
+        });
 
-  // Seed Admin User (if none exists)
-  if ((await User.count()) === 0) {
-    await User.create({
-      name: "Admin",
-      email: "admin@mail.com",
-      phone: "01234567890",
-      password: "xxxxxxxxxxxxxxx", // Ensure this is securely hashed in real-world apps
-      roleId: 2, // Assuming 'admin' is the second role
-      vendorId: 1, // Assuming 'Main' vendor is the first vendor
+        // Associate role with permissions
+        const rolePermissions = permissions.filter(
+          (permission) => roleData.permissions[permission.name]
+        );
+
+        await role.setPermissions(rolePermissions);
+        return role;
+      })
+    );
+
+    // Ensure Vendor exists before Users
+    const [vendor] = await Vendor.findOrCreate({
+      where: { name: "Main" },
+      defaults: {
+        name: "Main",
+        address: "Main Street 123",
+        contactEmail: "main@mail.com",
+      },
     });
-    console.log("Admin user seeded successfully");
+
+    console.log("✅ Vendor seeded successfully.");
+
+    // Find the correct admin role dynamically
+    const adminRole = roles.find((r) => r.name === "admin");
+    if (!adminRole) {
+      throw new Error("❌ Admin role not found!");
+    }
+
+    // Ensure Admin User is created after Vendor and Role exist
+    if ((await User.count()) === 0) {
+      await User.create({
+        name: "Admin",
+        email: "admin@mail.com",
+        password: "xxxxxxxxxxxxxxx", // Ensure to hash password in production
+        roleId: adminRole.id, // Assigning the correct roleId dynamically
+        vendorId: vendor.id, // Assigning the correct vendorId dynamically
+      });
+
+      console.log("✅ Admin user seeded successfully.");
+    }
+
+    console.log("🎉 Database seeding completed!");
+  } catch (error) {
+    console.error("❌ Error seeding database:", error);
   }
 }
 
+// Sync and seed database
 async function syncAndSeed() {
   try {
-    // Sync models in the correct order to avoid dependency issues
-    // await Role.sync({ alter: true });
-    // await Permission.sync({ alter: true });
-    // await RolePermissions.sync({ alter: true });
-    // await Vendor.sync({ alter: true });
-    // await User.sync({ alter: true });
-    // await UserAddress.sync({ alter: true });
+    console.log("🔄 Syncing database...");
 
-    // // Seed database
+    // Sync models in the correct order
+    await sequelize.sync({ alter: true });
+
+    console.log("✅ Models synced successfully!");
+
+    // Call the seed function separately
     // await seedDatabase();
 
-    console.log("Models synced and data seeded successfully");
+    console.log("🎉 Database ready!");
   } catch (error) {
-    console.error("Error syncing or seeding database:", error);
+    console.error("❌ Error syncing or seeding database:", error);
   }
 }
 
+// Export modules
 module.exports = {
   sequelize,
   Sequelize,
@@ -181,5 +217,8 @@ module.exports = {
   Vendor,
   UserAddress,
   RolePermissions,
+  Product,
+  Category,
+  Inventory,
   syncAndSeed,
 };

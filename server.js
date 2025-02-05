@@ -9,8 +9,17 @@ const auth = require("./plugins/auth");
 
 const init = async () => {
   const server = Hapi.server({
-    port: config.app.port,
-    host: "0.0.0.0",
+    port: 8000,
+    host: "localhost",
+    routes: {
+      cors: true,
+      validate: {
+        failAction: async (request, h, err) => {
+          console.error(err);
+          throw err;
+        },
+      },
+    },
   });
 
   // Register plugins
@@ -20,23 +29,20 @@ const init = async () => {
   // Add routes
   server.route(routes);
 
-  // Test database connection and seed data
+  // Initialize DB and seed
   try {
     await sequelize.authenticate();
-    console.log("Database connection has been established successfully.");
+    console.log("✅ Database connected.");
 
-    // Sync and seed the database
     await syncAndSeed();
-
-    console.log("Database synced and seeded successfully.");
+    console.log("✅ Database synced and seeded.");
   } catch (error) {
-    console.error("Error during database initialization:", error);
-    process.exit(1); // Exit if the database setup fails
+    console.error("❌ Database Error:", error);
+    process.exit(1);
   }
 
-  // Start the server
   await server.start();
-  console.log(`Server running on ${server.info.uri}`);
+  console.log(`🚀 Server running on ${server.info.uri}`);
 };
 
 process.on("unhandledRejection", (err) => {

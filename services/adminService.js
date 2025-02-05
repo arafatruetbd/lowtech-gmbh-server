@@ -1,36 +1,45 @@
 "use strict";
 
-const { User } = require("../models");
+const { User, Role, Permission } = require("../models");
 const bcrypt = require("bcrypt");
 const Jwt = require("@hapi/jwt");
 const config = require("../config");
 
 module.exports = {
   adminLogin: async (email, password) => {
-    // Find the admin by email
-    const admin = await User.findOne({ where: { email } });
+    const admin = await User.findOne({
+      where: { email },
+      attributes: ["id", "name", "roleId", "password"],
+      include: [
+        {
+          model: Role,
+          as: "role", // ✅ Ensure correct alias is used
+          attributes: ["id", "name"],
+          include: [
+            {
+              model: Permission,
+              as: "permissions", // ✅ Use correct alias
+              attributes: ["name"],
+              through: { attributes: [] },
+            },
+          ],
+        },
+      ],
+    });
 
-    if (
-      !admin ||
-      admin.roleId !== 2 ||
-      !(await bcrypt.compare(password, admin.password))
-    ) {
+    if (!admin || !(await bcrypt.compare(password, admin.password))) {
       throw new Error("Invalid admin credentials");
     }
 
-    // Generate JWT token for the admin
+    const scopes = admin.role.permissions.map((perm) => perm.name);
+
     const token = Jwt.token.generate(
-      { id: admin.id, role: "admin" },
-      {
-        key: config.jwt.secret,
-        algorithm: "HS256",
-      },
-      {
-        ttlSec: config.jwt.expiresIn,
-      }
+      { id: admin.id, role: admin.role.name, scope: scopes },
+      { key: config.jwt.secret, algorithm: "HS256" },
+      { ttlSec: config.jwt.expiresIn }
     );
 
-    return token;
+    return { token };
   },
 
   createSubAdmin: async (name, email, password) => {
