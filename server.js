@@ -2,7 +2,6 @@
 
 const Hapi = require("@hapi/hapi");
 const { sequelize, syncAndSeed } = require("./models");
-const config = require("./config");
 const routes = require("./routes");
 const logger = require("./plugins/logger");
 const auth = require("./plugins/auth");

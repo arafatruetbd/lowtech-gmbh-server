@@ -18,8 +18,8 @@ module.exports = {
   signIn: async (request, h) => {
     try {
       const { email, password } = request.payload;
-      const token = await userService.authenticateUser(email, password);
-      return h.response({ message: "Login successful", token }).code(200);
+      const userInfo = await userService.authenticateUser(email, password);
+      return h.response({ message: "Login successful", userInfo }).code(200);
     } catch (error) {
       return h.response({ error: error.message }).code(400);
     }

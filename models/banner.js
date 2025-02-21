@@ -1,6 +1,6 @@
 module.exports = (sequelize, DataTypes) => {
-  const Category = sequelize.define(
-    "Category",
+  const Banner = sequelize.define(
+    "Banner",
     {
       id: {
         type: DataTypes.INTEGER,
@@ -15,21 +15,24 @@ module.exports = (sequelize, DataTypes) => {
           key: "id",
         },
       },
-      name: {
+      imageUrl: {
         type: DataTypes.STRING,
         allowNull: false,
-        unique: true,
       },
-      description: {
-        type: DataTypes.TEXT,
-        allowNull: true,
+      link: {
+        type: DataTypes.STRING,
+        allowNull: true, // Link to the promotion or category
+      },
+      isActive: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: true, // Only active banners are displayed
       },
     },
     {
-      tableName: "categories",
+      tableName: "banners",
       timestamps: true,
     }
   );
 
-  return Category;
+  return Banner;
 };

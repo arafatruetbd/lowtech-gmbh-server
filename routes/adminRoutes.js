@@ -1,7 +1,6 @@
 "use strict";
 
 const adminHandler = require("../handlers/adminHandler");
-const enforceRoles = require("../middlewares/enforceRoles");
 
 module.exports = [
   {
@@ -16,7 +15,6 @@ module.exports = [
     handler: adminHandler.createSubAdmin,
     options: {
       auth: "jwt",
-      pre: [{ method: enforceRoles(["admin"]) }],
     },
   },
   {

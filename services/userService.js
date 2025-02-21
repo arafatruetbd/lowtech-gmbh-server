@@ -28,6 +28,7 @@ module.exports = {
   authenticateUser: async (email, password) => {
     // Find the user by email
     const user = await User.findOne({ where: { email } });
+
     if (!user || !(await bcrypt.compare(password, user.password))) {
       throw new Error("Invalid email or password");
     }
@@ -44,9 +45,16 @@ module.exports = {
       }
     );
 
-    return token;
+    // ✅ Return user details along with token
+    return {
+      token,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+      },
+    };
   },
-
   signOut: async () => {
     // Token invalidation logic can be added here (if needed, e.g., using a token blacklist)
     return "Signed out successfully";

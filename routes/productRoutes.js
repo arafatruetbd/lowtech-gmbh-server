@@ -34,6 +34,12 @@ module.exports = [
     },
   },
   {
+    path: "/products/search",
+    method: "GET",
+    handler: handlers.getProductsBySearch,
+    options: { auth: false },
+  },
+  {
     path: "/products/{id}",
     method: "GET",
     handler: handlers.getProductById,
@@ -48,9 +54,17 @@ module.exports = [
     options: {
       auth: {
         strategy: "jwt",
-        scope: ["manage_product"], // ✅ Only users with 'manage_product' scope can update products
+        scope: ["manage_product"],
+      },
+      payload: {
+        output: "stream", // ✅ Required for file upload
+        parse: true,
+        multipart: { output: "stream" }, // ✅ Ensure multipart form-data is handled correctly
+        allow: "multipart/form-data",
+        maxBytes: 5 * 1024 * 1024, // 5MB limit
       },
       validate: validations.updateProduct,
+      pre: [{ method: uploadImage }], // ✅ Upload image before updating product
     },
   },
   {
@@ -63,5 +77,19 @@ module.exports = [
         scope: ["manage_product"], // ✅ Only users with 'manage_product' scope can delete products
       },
     },
+  },
+  {
+    path: "/products/latest",
+    method: "GET",
+    handler: handlers.getLatestProducts,
+    options: {
+      auth: false, // Public API
+    },
+  },
+  {
+    path: "/products/category/{categoryId}",
+    method: "GET",
+    handler: handlers.getCategoryProducts,
+    options: { auth: false },
   },
 ];

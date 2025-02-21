@@ -24,6 +24,10 @@ const RolePermissions = require("./rolePermissions")(sequelize, Sequelize);
 const Category = require("./category")(sequelize, Sequelize);
 const Product = require("./product")(sequelize, Sequelize);
 const Inventory = require("./inventory")(sequelize, Sequelize);
+const Banner = require("./banner")(sequelize, Sequelize);
+const Order = require("./order")(sequelize, Sequelize);
+const ShippingAddress = require("./shippingAddress")(sequelize, Sequelize);
+const OrderItem = require("./orderItem")(sequelize, Sequelize);
 
 // Define Associations
 function defineAssociations() {
@@ -59,6 +63,43 @@ function defineAssociations() {
   // Inventory and Product (One-to-One)
   Product.hasOne(Inventory, { foreignKey: "productId", as: "inventory" });
   Inventory.belongsTo(Product, { foreignKey: "productId", as: "product" });
+
+  // Vendor and Banner (One-to-many)
+  Vendor.hasMany(sequelize.models.Banner, {
+    foreignKey: "vendorId",
+    as: "banners",
+  });
+
+  Banner.belongsTo(Vendor, { foreignKey: "vendorId", as: "vendor" });
+
+  // Vendor and Category (One-to-many)
+  Category.belongsTo(Vendor, { foreignKey: "vendorId", as: "vendor" });
+  Vendor.hasMany(Category, { foreignKey: "vendorId", as: "categories" });
+
+  // Order and User
+  Order.belongsTo(User, { foreignKey: "userId", as: "user" });
+
+  Order.hasMany(OrderItem, {
+    foreignKey: "orderId",
+    as: "orderItems",
+  });
+
+  Order.hasOne(ShippingAddress, {
+    foreignKey: "orderId",
+    as: "shippingAddress",
+  });
+
+  OrderItem.belongsTo(Order, { foreignKey: "orderId", as: "order" });
+
+  OrderItem.belongsTo(Product, {
+    foreignKey: "productId",
+    as: "product",
+  });
+
+  ShippingAddress.belongsTo(Order, {
+    foreignKey: "orderId",
+    as: "order",
+  });
 
   console.log("✅ Associations defined successfully!");
 }
@@ -220,5 +261,9 @@ module.exports = {
   Product,
   Category,
   Inventory,
+  Banner,
+  Order,
+  OrderItem,
+  ShippingAddress,
   syncAndSeed,
 };

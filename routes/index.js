@@ -5,6 +5,9 @@ const adminRoutes = require("./adminRoutes");
 const categoryRoutes = require("./categoryRoutes");
 const productRoutes = require("./productRoutes");
 const inventoryRoutes = require("./inventoryRoutes");
+const vendorRoutes = require("./vendorRoutes");
+const orderRoutes = require("./orderRoutes");
+const paymentRoutes = require("./paymentRoutes");
 
 module.exports = [].concat(
   root,
@@ -12,5 +15,8 @@ module.exports = [].concat(
   adminRoutes,
   categoryRoutes,
   productRoutes,
-  inventoryRoutes
+  inventoryRoutes,
+  vendorRoutes,
+  orderRoutes,
+  paymentRoutes
 );
