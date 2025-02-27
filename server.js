@@ -9,9 +9,13 @@ const auth = require("./plugins/auth");
 const init = async () => {
   const server = Hapi.server({
     port: 8000,
-    host: "localhost",
+    host: "0.0.0.0", // Accept requests from external sources
     routes: {
-      cors: true,
+      cors: {
+        origin: ["https://lowtech-gmbh.s3-website.eu-central-1.amazonaws.com"], // Allow only this origin
+        headers: ["Accept", "Content-Type", "Authorization"],
+        credentials: true, // Allow cookies if needed
+      },
       validate: {
         failAction: async (request, h, err) => {
           console.error(err);
