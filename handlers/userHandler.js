@@ -6,9 +6,9 @@ module.exports = {
   signUp: async (request, h) => {
     try {
       const { name, email, password } = request.payload;
-      const newUser = await userService.createUser(name, email, password);
+      const userInfo = await userService.createUser(name, email, password);
       return h
-        .response({ message: "User registered successfully", user: newUser })
+        .response({ message: "User registered successfully", userInfo })
         .code(201);
     } catch (error) {
       return h.response({ error: error.message }).code(400);

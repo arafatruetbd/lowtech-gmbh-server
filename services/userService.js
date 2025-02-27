@@ -16,13 +16,35 @@ module.exports = {
     // Hash the password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Create and return the user with Role 1: User
-    return await User.create({
+    // Create user with Role 1 (Regular User)
+    const user = await User.create({
       name,
       email,
       password: hashedPassword,
       roleId: 1,
     });
+
+    // Generate JWT token
+    const token = Jwt.token.generate(
+      { id: user.id, role: user.roleId }, // Payload
+      {
+        key: config.jwt.secret, // Secret key
+        algorithm: "HS256",
+      },
+      {
+        ttlSec: config.jwt.expiresIn, // Token expiry in seconds
+      }
+    );
+
+    // ✅ Return user details along with token
+    return {
+      token,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+      },
+    };
   },
 
   authenticateUser: async (email, password) => {
