@@ -4,7 +4,17 @@ const { Category } = require("../models");
 
 // Create Category
 const createCategory = async (data) => {
-  return await Category.create(data);
+  try {
+    return await Category.create(data);
+  } catch (err) {
+    console.error("❌ Error creating category in DB:", err);
+    throw new Error("Database Error");
+  }
+};
+
+// Function to check if category name already exists
+const findCategoryByName = async (name) => {
+  return await Category.findOne({ where: { name } });
 };
 
 // Get All Categories
@@ -34,6 +44,7 @@ const deleteCategory = async (id) => {
 
 module.exports = {
   createCategory,
+  findCategoryByName,
   getCategories,
   getCategoryById,
   updateCategory,
