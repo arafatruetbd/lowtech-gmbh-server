@@ -1,28 +1,38 @@
-"use strict";
-
-const Hapi = require("@hapi/hapi");
-const { sequelize, syncAndSeed } = require("./models");
-const routes = require("./routes");
-const logger = require("./plugins/logger");
-const auth = require("./plugins/auth");
-
 const init = async () => {
   const server = Hapi.server({
     port: 8000,
     host: "0.0.0.0", // Accept requests from external sources
     routes: {
       cors: {
-        origin: ["https://lowtech-gmbh.s3-website.eu-central-1.amazonaws.com"], // Allow only this origin
+        origin: ["*"], // Allow all origins for debugging (change to your S3 URL later)
         headers: ["Accept", "Content-Type", "Authorization"],
-        credentials: true, // Allow cookies if needed
-      },
-      validate: {
-        failAction: async (request, h, err) => {
-          console.error(err);
-          throw err;
-        },
+        credentials: true,
       },
     },
+  });
+
+  // Middleware to manually set CORS headers
+  server.ext("onPreResponse", (request, h) => {
+    const response = request.response;
+    if (response.isBoom) {
+      response.output.headers["Access-Control-Allow-Origin"] =
+        "https://lowtech-gmbh.s3-website.eu-central-1.amazonaws.com";
+      response.output.headers["Access-Control-Allow-Methods"] =
+        "GET, POST, PUT, DELETE, OPTIONS";
+      response.output.headers["Access-Control-Allow-Headers"] =
+        "Content-Type, Authorization";
+      response.output.headers["Access-Control-Allow-Credentials"] = "true";
+    } else {
+      response.headers = {
+        ...response.headers,
+        "Access-Control-Allow-Origin":
+          "https://lowtech-gmbh.s3-website.eu-central-1.amazonaws.com",
+        "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type, Authorization",
+        "Access-Control-Allow-Credentials": "true",
+      };
+    }
+    return h.continue;
   });
 
   // Register plugins
@@ -36,7 +46,6 @@ const init = async () => {
   try {
     await sequelize.authenticate();
     console.log("✅ Database connected.");
-
     await syncAndSeed();
     console.log("✅ Database synced and seeded.");
   } catch (error) {
@@ -47,10 +56,3 @@ const init = async () => {
   await server.start();
   console.log(`🚀 Server running on ${server.info.uri}`);
 };
-
-process.on("unhandledRejection", (err) => {
-  console.error(err);
-  process.exit(1);
-});
-
-init();
