@@ -11,7 +11,12 @@ const init = async () => {
     port: 8000,
     host: "localhost",
     routes: {
-      cors: true,
+      cors: {
+        origin: ["https://lowtech-gmbh.s3-website.eu-central-1.amazonaws.com"], // Allow only CloudFront
+        headers: ["Accept", "Content-Type", "Authorization"],
+        additionalHeaders: ["X-Requested-With"],
+        credentials: true, // Allow cookies/auth headers
+      },
       validate: {
         failAction: async (request, h, err) => {
           console.error(err);
