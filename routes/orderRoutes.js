@@ -71,7 +71,7 @@ module.exports = [
     options: {
       auth: {
         strategy: "jwt",
-        scope: ["admin"],
+        scope: ["manage_order"],
       },
     },
   },
@@ -84,7 +84,7 @@ module.exports = [
     options: {
       auth: {
         strategy: "jwt",
-        scope: ["admin"],
+        scope: ["manage_order"],
       },
     },
   },

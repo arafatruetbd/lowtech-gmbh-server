@@ -31,7 +31,6 @@ const uploadImage = async (request, h) => {
         Key: filename,
         Body: file,
         ContentType: file.hapi.headers["content-type"],
-        ACL: "public-read", // ✅ Make uploaded file public
       },
     });
 

@@ -11,6 +11,13 @@ const sequelize = new Sequelize(
     host: config.db.host,
     dialect: config.db.dialect,
     logging: config.app.env !== "production" ? console.log : false,
+    port: 5432, // Ensure correct PostgreSQL port
+    dialectOptions: {
+      ssl: {
+        require: true, // AWS RDS requires SSL
+        rejectUnauthorized: false, // Bypass self-signed cert issues
+      },
+    },
   }
 );
 

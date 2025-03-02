@@ -33,7 +33,7 @@ const init = async () => {
     await sequelize.authenticate();
     console.log("✅ Database connected.");
 
-    await syncAndSeed();
+    // await syncAndSeed();
     console.log("✅ Database synced and seeded.");
   } catch (error) {
     console.error("❌ Database Error:", error);
