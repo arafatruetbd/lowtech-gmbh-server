@@ -58,6 +58,17 @@ jobs:
         run: |
           sed -i "s|<IMAGE_TAG>|$IMAGE_TAG|g" appspec.yml
 
+      - name: 📦 Package Deployment Files into a ZIP
+        run: |
+          mkdir -p deploy_package
+          cp appspec.yml deploy_package/
+          cp -r scripts deploy_package/  # Ensure your start/stop scripts are included
+          zip -r deploy_package.zip deploy_package
+
+      - name: 📤 Upload Deployment Package to S3
+        run: |
+          aws s3 cp deploy_package.zip s3://${{ secrets.S3_BUCKET }}/deploy_package.zip --region $AWS_REGION
+
       - name: 📄 Generate `revision.json`
         run: |
           cat <<EOF > revision.json
@@ -65,8 +76,8 @@ jobs:
             "revisionType": "S3",
             "s3Location": {
               "bucket": "${{ secrets.S3_BUCKET }}",
-              "key": "appspec.yml",
-              "bundleType": "yaml"
+              "key": "deploy_package.zip",
+              "bundleType": "zip"
             }
           }
           EOF
