@@ -52,17 +52,30 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}
+          aws-region: ${{ env.AWS_REGION }}
 
       - name: 🔄 Update AWS CodeDeploy AppSpec File
         run: |
           sed -i "s|<IMAGE_TAG>|$IMAGE_TAG|g" appspec.yml
+
+      - name: 📄 Generate `revision.json`
+        run: |
+          cat <<EOF > revision.json
+          {
+            "revisionType": "S3",
+            "s3Location": {
+              "bucket": "${{ secrets.S3_BUCKET }}",
+              "key": "appspec.yml",
+              "bundleType": "yaml"
+            }
+          }
+          EOF
 
       - name: 🚀 Deploy via AWS CodeDeploy
         run: |
           aws deploy create-deployment \
             --application-name lowtech-gmbh-app \
             --deployment-group-name lowtech-gmbh-deployment-group \
-            --revision revisionType=S3Location,s3Location={bucket=${{ secrets.S3_BUCKET }},key=appspec.yml,bundleType=yaml} \
+            --revision file://revision.json \
             --deployment-config-name CodeDeployDefault.OneAtATime \
             --region $AWS_REGION
