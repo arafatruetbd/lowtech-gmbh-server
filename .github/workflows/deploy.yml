@@ -1,0 +1,68 @@
+name: Deploy Hapi.js Backend
+
+on:
+  push:
+    branches:
+      - main  # Change this if your main branch has a different name
+
+env:
+  AWS_REGION: "eu-central-1"
+  ECR_REPOSITORY: "lowtech-gmbh-server"
+  IMAGE_TAG: ${{ github.sha }}
+
+jobs:
+  build:
+    name: 🔨 Build & Push Docker Image
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: 🔑 Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: 🏗️ Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: 🏷️ Login to AWS ECR
+        run: |
+          aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com
+
+      - name: 🐳 Build and Push Docker Image
+        run: |
+          docker build -t ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY:$IMAGE_TAG .
+          docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY:$IMAGE_TAG
+
+  deploy:
+    name: 🚀 Deploy to AWS EC2
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: 🔑 Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: 🔄 Update AWS CodeDeploy AppSpec File
+        run: |
+          sed -i "s|<IMAGE_TAG>|$IMAGE_TAG|g" appspec.yml
+
+      - name: 🚀 Deploy via AWS CodeDeploy
+        run: |
+          aws deploy create-deployment \
+            --application-name lowtech-gmbh-app \
+            --deployment-group-name lowtech-gmbh-deployment-group \
+            --revision revisionType=S3Location,s3Location={bucket=${{ secrets.S3_BUCKET }},key=appspec.yml,bundleType=yaml} \
+            --deployment-config-name CodeDeployDefault.OneAtATime \
+            --region $AWS_REGION
